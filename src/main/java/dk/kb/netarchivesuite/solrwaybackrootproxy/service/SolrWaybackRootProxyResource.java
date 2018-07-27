@@ -52,8 +52,7 @@ public class SolrWaybackRootProxyResource {
       boolean relativeLeak = false;
       if (leakUrlStr.startsWith(PropertiesLoaderWeb.WAYBACK_SERVER_ROOT) ) {
         relativeLeak = true;        
-      }
-      log.info("leakUrlStr:" + leakUrlStr + " relativ leak:" + relativeLeak);
+      }      
 
       String refererUrl = httpRequest.getHeader("referer");
       if (refererUrl == null) {
@@ -61,14 +60,11 @@ public class SolrWaybackRootProxyResource {
         return Response.status(Response.Status.NOT_FOUND).build();       
       }
   
-      
-      log.info("referer:" + refererUrl);
+            
       //Fixing leak from style-sheets. Referer is Solrwayback service syntax
       if (refererUrl.startsWith(PropertiesLoaderWeb.WAYBACK_SERVER_ROOT +"/solrwayback/services/view")
        || refererUrl.startsWith(PropertiesLoaderWeb.WAYBACK_SERVER_ROOT +"/solrwayback/services/download") ){
-        //Special case.
-        log.info("special case, leak from resource on page:"+leakUrlStr);          
-      
+        //Special case.               
         URL refererURL = new URL(refererUrl);
         String leakAuth = refererURL.getAuthority();
         int index = leakUrlStr.indexOf(leakAuth);
@@ -76,15 +72,14 @@ public class SolrWaybackRootProxyResource {
         // System.out.println(leakAuth);        
         
         String query = refererURL.getQuery();
-        String queryAndUrlInfo=query+"&urlPart="+leakUrlPart;        
-        log.info("queryAndUrlInfo:"+queryAndUrlInfo);
         if (query == null){
-            log.warn("missing url from referer:"+refererUrl);
+          log.warn("missing url solrwayback params from referer:"+refererUrl);
+          return Response.status(Response.Status.NOT_FOUND).build();
         }
-         
         
+        String queryAndUrlInfo=query+"&urlPart="+leakUrlPart;                        
         String redirect = PropertiesLoaderWeb.WAYBACK_SERVER_ROOT+"/solrwayback/services/viewFromLeakedResource?"+queryAndUrlInfo;
-        log.info("redirect url,  from resource leak:" + redirect);
+        log.info("Leak type:SolrwaybackResources view/download. Leak url:"+leakUrlStr +" Refererer:"+refererUrl +" -> Ŕedirect url:"+redirect);       
         URI uri = UriBuilder.fromUri(redirect).build();
         return Response.seeOther(uri).build();
       }
@@ -111,8 +106,6 @@ public class SolrWaybackRootProxyResource {
       String leakUrlPart = leakUrlStr.substring(index + leakAuth.length()); //
       // System.out.println(leakUrlPart);
 
-      System.out.println("waybackUrl:"+waybackUrl);
-      System.out.println("ref url:"+refererUrl);
       URL refererURL = new URL(waybackUrl);
       String refererAuth = refererURL.getAuthority();
       // System.out.println(refererAuth);
@@ -121,15 +114,15 @@ public class SolrWaybackRootProxyResource {
 
       if (relativeLeak) {
         String redirect = solrwaybackBaseUrl + waybackDate + "/http://" + refererAuth + leakUrlPart;
-        log.info("redirect url,  relative url leak:" + redirect);
+        log.info("Leak type:Relative url. Leak url:"+leakUrlStr +" Refererer:"+refererUrl +" -> Redirect url:"+redirect);
+        
         URI uri = UriBuilder.fromUri(redirect).build();
         return Response.seeOther(uri).build(); // Jersey way to forward response.
       } else {
         String redirect = solrwaybackBaseUrl + waybackDate + "/" + leakUrlStr;
-        log.info("redirect url, absolute url leak:" + redirect);        
+        log.info("Leak type:Absolute url. Leak url:"+leakUrlStr +" Refererer:"+refererUrl +" ->  Ŕedirect url:"+redirect);        
         URI uri = UriBuilder.fromUri(redirect).build();
         return Response.seeOther(uri).build(); // Jersey way to forward response.
-
       }
 
     } catch (Exception e) {

@@ -23,10 +23,10 @@ public class InitializationContextListener implements ServletContextListener {
         Properties props = new Properties();
         try {
           
-            String webbAppContext = event.getServletContext().getContextPath();                    
+                                
             props.load(InitializationContextListener.class.getResourceAsStream("/build.properties"));
             version = props.getProperty("APPLICATION.VERSION");                                          
-            PropertiesLoaderWeb.initProperties(webbAppContext+"web.properties"); //frontend
+            PropertiesLoaderWeb.initProperties("solrwaybackweb.properties"); //frontend
                         
             log.info("SolrWaybackRootProxy version " + version + " started successfully");
 
