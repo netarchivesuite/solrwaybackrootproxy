@@ -1,7 +1,7 @@
 # SolrWaybackRootProxy
-Using the solrwaybackrootproxy will improve playback, can redirect and fix leaked resources when running in socks4 mode.
+Using the solrwaybackrootproxy will improve playback in SolrWayback. It can redirect and fix leaked resources when running in socks4 mode.
 This module is optional for the SolrWayback web-application. Even when not running in Socks mode, SolrWaybackRootProxy can
-fix and direct leaks that are relative ie. '../images/test.png'. Without proxy mode it can not fix relative URLs, since they will leak
+fix and direct leaks that are relative ie. '../images/test.png'. Without proxy mode it can not fix absolute URLs, since they will leak
 to the live web.
 
 ## Install
