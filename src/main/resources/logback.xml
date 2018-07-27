@@ -1,0 +1,6 @@
+<configuration scan="true" scanPeriod="5 minutes">
+    <insertFromJNDI env-entry-name="java:comp/env/${pom.name}/logback" as="logbackConfiguration"/>
+
+    <include url="${logbackConfiguration}"/>
+
+</configuration>
