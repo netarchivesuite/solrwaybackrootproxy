@@ -86,6 +86,8 @@ public class SolrWaybackRootProxyResource {
   
       int dataStart = refererUrl.indexOf("/web/");
       String solrwaybackBaseUrl = refererUrl.substring(0, dataStart + 5);
+      String solrwaybackProxyUrl = solrwaybackBaseUrl.replaceFirst("/web/","/webProxy/");
+      
       String waybackDataObject = refererUrl.substring(dataStart + 5);
       // System.out.println(waybackDataObject);
       int indexFirstSlash = waybackDataObject.indexOf("/");
@@ -113,14 +115,14 @@ public class SolrWaybackRootProxyResource {
       // System.out.println(referleakUrlPart);
 
       if (relativeLeak) {
-        String redirect = solrwaybackBaseUrl + waybackDate + "/http://" + refererAuth + leakUrlPart;
+        String redirect = solrwaybackProxyUrl + waybackDate + "/http://" + refererAuth + leakUrlPart;
         log.info("Leak type:Relative url. Leak url:"+leakUrlStr +" Refererer:"+refererUrl +" -> Redirect url:"+redirect);
         
         URI uri = UriBuilder.fromUri(redirect).build();
         return Response.seeOther(uri).build(); // Jersey way to forward response.
       } else {
-        String redirect = solrwaybackBaseUrl + waybackDate + "/" + leakUrlStr;
-        log.info("Leak type:Absolute url. Leak url:"+leakUrlStr +" Refererer:"+refererUrl +" ->  Ŕedirect url:"+redirect);        
+        String redirect = solrwaybackProxyUrl + waybackDate + "/" + leakUrlStr;
+        log.info("Leak type:Absolute url. Leak url:"+leakUrlStr +" Refererer:"+refererUrl +" ->  Redirect url:"+redirect);        
         URI uri = UriBuilder.fromUri(redirect).build();
         return Response.seeOther(uri).build(); // Jersey way to forward response.
       }
