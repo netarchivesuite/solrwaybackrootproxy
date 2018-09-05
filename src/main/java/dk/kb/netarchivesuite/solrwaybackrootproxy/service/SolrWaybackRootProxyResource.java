@@ -22,10 +22,19 @@ import dk.kb.netarchivesuite.solrwaybackrootproxy.properties.PropertiesLoaderWeb
 public class SolrWaybackRootProxyResource {
 
   private static final Logger log = LoggerFactory.getLogger(SolrWaybackRootProxyResource.class);
-
-  /*
-   * 
+ 
+  
+  //In jersey you need this method to catch a rootcontext call. The proxy method needs at least 
+  //one character more besides the root call.
+   @GET
+   public Response get(@Context UriInfo uriInfo, @Context HttpServletRequest httpRequest)
+   {
+     return proxy(uriInfo, httpRequest);      
+   }
+  
+  /* 
    * Jersey syntax to match all
+   * You can not just remove the ?, it will still need at least 1 character.
    */
   @GET
   @Path("/{var:.*?}")
@@ -56,11 +65,18 @@ public class SolrWaybackRootProxyResource {
 
       String refererUrl = httpRequest.getHeader("referer");
       if (refererUrl == null) {
-        log.info("referer missing for url:" + leakUrlStr);
-        return Response.status(Response.Status.NOT_FOUND).build();       
+        //This will open happen if user type a new URL in the browser.
+        //Some OpenWayback users just type url in the browser field and it will open (some  harvested version) of
+        //that file. The problem is crawltime is unknown. Just return latest harvest for that site.
+        //The user can then open the calender and pick another harvest time.
+        log.info("referer missing for url:" + leakUrlStr);        
+        //Show toolbar. Year 2999 should be last harvest and will also tell user this is not a true harvest time.        
+        String redirect = PropertiesLoaderWeb.WAYBACK_SERVER_ROOT+ "/solrwayback/services/web/29990101000000/" + leakUrlStr;
+        log.info("Redirect without referer url, using timestamp as current date:"+redirect );                
+        URI uri = UriBuilder.fromUri(redirect).build();
+        return Response.seeOther(uri).build(); // Jersey way to forward response.       
       }
-  
-            
+              
       //Fixing leak from style-sheets. Referer is Solrwayback service syntax
       if (refererUrl.startsWith(PropertiesLoaderWeb.WAYBACK_SERVER_ROOT +"/solrwayback/services/view")
        || refererUrl.startsWith(PropertiesLoaderWeb.WAYBACK_SERVER_ROOT +"/solrwayback/services/download") ){
