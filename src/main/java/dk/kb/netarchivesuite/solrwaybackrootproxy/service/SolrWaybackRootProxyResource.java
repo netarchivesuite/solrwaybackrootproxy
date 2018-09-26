@@ -40,18 +40,20 @@ public class SolrWaybackRootProxyResource {
   @Path("/{var:.*?}")
   public Response proxy(@Context UriInfo uriInfo, @Context HttpServletRequest httpRequest) {
     try {
-
+      //The log method is called before return so all information will be logged in same block in log-file.
+      
+      
       // Warning. You can not understand the code below, need to be refactored
       // and unittestet
-
       // For some reason the var regexp does not work with comma (;) and other
-      // characters. So I have to grab the full url from uriInfo
-      log.info("/rootproxy called with uri:"+uriInfo.getRequestUri());
+      // characters. So I have to grab the full url from uriInfo           
 
+      
+      
       // String
       // refererUrl="teg-desktop.sb.statsbiblioteket.dk:8080/solrwayback/services/web/20010704073938/http://opasia.dk/kultur/musik/anmeldelser/an_paradise_lost.shtml";
       // String leakUrlStr= "http://localhost:8080/images/leaked.png?test=123";
-      String leakUrlStr = uriInfo.getRequestUri().toString();
+       String leakUrlStr = uriInfo.getRequestUri().toString();
 
 
       // Determine if the leak is relative (/images/test.png etc.) or
@@ -59,7 +61,7 @@ public class SolrWaybackRootProxyResource {
       // in first case find url from referer and combine it to the correct url,
       // in latter just use this URL.
       boolean relativeLeak = false;
-      if (leakUrlStr.startsWith(PropertiesLoaderWeb.WAYBACK_SERVER_ROOT) ) {
+      if (isSolrWaybackHostAndStartsWith(leakUrlStr, "")){ //just see if it is solwayback host (with or without port)         
         relativeLeak = true;        
       }      
 
@@ -69,34 +71,37 @@ public class SolrWaybackRootProxyResource {
         //Some OpenWayback users just type url in the browser field and it will open (some  harvested version) of
         //that file. The problem is crawltime is unknown. Just return latest harvest for that site.
         //The user can then open the calender and pick another harvest time.
-        log.info("referer missing for url:" + leakUrlStr);        
+        
         //Show toolbar. Year 2999 should be last harvest and will also tell user this is not a true harvest time.        
         String redirect = PropertiesLoaderWeb.WAYBACK_SERVER_ROOT+ "/solrwayback/services/web/29990101000000/" + leakUrlStr;
-        log.info("Redirect without referer url, using timestamp as current date:"+redirect );                
+                        
         URI uri = UriBuilder.fromUri(redirect).build();
+        logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "NO REFEFRER");
         return Response.seeOther(uri).build(); // Jersey way to forward response.       
       }
               
       //Fixing leak from style-sheets. Referer is Solrwayback service syntax
-      if (refererUrl.startsWith(PropertiesLoaderWeb.WAYBACK_SERVER_ROOT +"/solrwayback/services/view")
-       || refererUrl.startsWith(PropertiesLoaderWeb.WAYBACK_SERVER_ROOT +"/solrwayback/services/download") ){
+      if  ( (isSolrWaybackHostAndStartsWith(refererUrl, "/solrwayback/services/view"))          
+         || (isSolrWaybackHostAndStartsWith(refererUrl, "/solrwayback/services/download")) ){
+
         //Special case.               
         URL refererURL = new URL(refererUrl);
         String leakAuth = refererURL.getAuthority();
         int index = leakUrlStr.indexOf(leakAuth);
         String leakUrlPart = leakUrlStr.substring(index + leakAuth.length()); //
-        // System.out.println(leakAuth);        
+        
         
         String query = refererURL.getQuery();
         if (query == null){
-          log.warn("missing url solrwayback params from referer:"+refererUrl);
+          
+          logLeakRedirection( leakUrlStr, refererUrl, "NOT_FOUND(404)", "NOT FOUND");
           return Response.status(Response.Status.NOT_FOUND).build();
         }
         
         String queryAndUrlInfo=query+"&urlPart="+leakUrlPart;                        
-        String redirect = PropertiesLoaderWeb.WAYBACK_SERVER_ROOT+"/solrwayback/services/viewFromLeakedResource?"+queryAndUrlInfo;
-        log.info("Leak type:SolrwaybackResources view/download. Leak url:"+leakUrlStr +" Refererer:"+refererUrl +" -> Ŕedirect url:"+redirect);       
+        String redirect = PropertiesLoaderWeb.WAYBACK_SERVER_ROOT+"/solrwayback/services/viewFromLeakedResource?"+queryAndUrlInfo;                      
         URI uri = UriBuilder.fromUri(redirect).build();
+        logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "VIEW FROM LEAKED RESOURCE");
         return Response.seeOther(uri).build();
       }
   
@@ -132,21 +137,59 @@ public class SolrWaybackRootProxyResource {
 
       if (relativeLeak) {
         String redirect = solrwaybackProxyUrl + waybackDate + "/http://" + refererAuth + leakUrlPart;
-        log.info("Leak type:Relative url. Leak url:"+leakUrlStr +" Refererer:"+refererUrl +" -> Redirect url:"+redirect);
-        
+                
         URI uri = UriBuilder.fromUri(redirect).build();
+        logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "RELEATIVE LEAK");
         return Response.seeOther(uri).build(); // Jersey way to forward response.
       } else {
-        String redirect = solrwaybackProxyUrl + waybackDate + "/" + leakUrlStr;
-        log.info("Leak type:Absolute url. Leak url:"+leakUrlStr +" Refererer:"+refererUrl +" ->  Redirect url:"+redirect);        
+        String redirect = solrwaybackProxyUrl + waybackDate + "/" + leakUrlStr;       
         URI uri = UriBuilder.fromUri(redirect).build();
+        logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "ABSOLUTE LEAK");
         return Response.seeOther(uri).build(); // Jersey way to forward response.
       }
 
     } catch (Exception e) {
+      log.error("Error resolving leak:"+uriInfo.toString());
       e.printStackTrace();
       return Response.ok().build();
     }
   }
 
+  //The tricky is to check with and without the port. using defaults ports 80 or 443 for htts wil have browsers strip the port, 
+  //Is the referer url from Solrwayback itself and does it star with urlPart
+  private static boolean isSolrWaybackHostAndStartsWith(String refererUrl, String urlPart) throws Exception{
+    String solrWaybackBaseUrlFull =  PropertiesLoaderWeb.WAYBACK_SERVER_ROOT;
+    String solrWaybackBaseWithOutPort =  removePortFromUrl(solrWaybackBaseUrlFull);
+       
+    if (refererUrl.startsWith(solrWaybackBaseUrlFull+urlPart)){
+      return true;
+    }
+    else if (refererUrl.startsWith(solrWaybackBaseWithOutPort+urlPart)){
+      return true;
+    }
+    return false;
+  }
+  
+  
+  /*
+   * Syncronized so logs are not mixed. Performance overhead is neglible
+   */
+  
+ 
+  
+  public static String removePortFromUrl(String url) throws Exception {
+
+    URL aURL = new URL(url);    
+   return aURL.getProtocol()+"://"+aURL.getHost()+aURL.getPath();
+}
+  
+  private static synchronized void logLeakRedirection(String leakString, String referer, String redirectUrl,  String leakType  ){
+    log.info("****************************************************************************************************************");
+    log.info("LeakString:"+leakString);
+    log.info("Referer:"+referer);
+    log.info("Redirect Url:"+redirectUrl);    
+    log.info("Leak type:"+leakType);
+    log.info("****************************************************************************************************************");   
+  }
+  
 }
