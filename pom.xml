@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>dk.kb.netarchivesuite.solrwayback</groupId>
   <artifactId>solrwaybackrootproxy</artifactId>
-  <version>3.2.0</version>
+  <version>3.3.0</version>
   <packaging>war</packaging>
   <name>solrwaybackrootproxy</name>
   <url>http://maven.apache.org</url>
