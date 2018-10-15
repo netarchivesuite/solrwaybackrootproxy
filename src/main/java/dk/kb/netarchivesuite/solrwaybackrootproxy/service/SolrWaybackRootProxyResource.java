@@ -2,6 +2,7 @@ package dk.kb.netarchivesuite.solrwaybackrootproxy.service;
 
 import java.net.URI;
 import java.net.URL;
+import java.net.URLEncoder;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
@@ -97,8 +98,10 @@ public class SolrWaybackRootProxyResource {
           logLeakRedirection( leakUrlStr, refererUrl, "NOT_FOUND(404)", "NOT FOUND");
           return Response.status(Response.Status.NOT_FOUND).build();
         }
+        String leakUrlPartEncoded= URLEncoder.encode((leakUrlPart), "UTF-8");
         
-        String queryAndUrlInfo=query+"&urlPart="+leakUrlPart;                        
+        String queryAndUrlInfo=query+"&urlPart="+leakUrlPartEncoded;                        
+        log.info("queryAndLeakInfo(missing params?):"+queryAndUrlInfo);
         String redirect = PropertiesLoaderWeb.WAYBACK_SERVER_ROOT+"/solrwayback/services/viewFromLeakedResource?"+queryAndUrlInfo;                      
         URI uri = UriBuilder.fromUri(redirect).build();
         logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "VIEW FROM LEAKED RESOURCE");
