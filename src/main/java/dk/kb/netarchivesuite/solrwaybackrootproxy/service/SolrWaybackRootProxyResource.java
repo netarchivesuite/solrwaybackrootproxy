@@ -9,7 +9,6 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
 import org.slf4j.Logger;
@@ -76,7 +75,7 @@ public class SolrWaybackRootProxyResource {
         //Show toolbar. Year 2999 should be last harvest and will also tell user this is not a true harvest time.        
         String redirect = PropertiesLoaderWeb.WAYBACK_SERVER_ROOT+ "/solrwayback/services/web/29990101000000/" + leakUrlStr;
                         
-        URI uri = UriBuilder.fromUri(redirect).build();
+        URI uri = new URI(redirect);
         logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "NO REFEFRER");
         return Response.seeOther(uri).build(); // Jersey way to forward response.       
       }
@@ -88,6 +87,7 @@ public class SolrWaybackRootProxyResource {
         //Special case.               
         URL refererURL = new URL(refererUrl);
         String leakAuth = refererURL.getAuthority();
+        
         int index = leakUrlStr.indexOf(leakAuth);
         String leakUrlPart = leakUrlStr.substring(index + leakAuth.length()); //
         
@@ -103,7 +103,7 @@ public class SolrWaybackRootProxyResource {
         String queryAndUrlInfo=query+"&urlPart="+leakUrlPartEncoded;                        
         log.info("queryAndLeakInfo(missing params?):"+queryAndUrlInfo);
         String redirect = PropertiesLoaderWeb.WAYBACK_SERVER_ROOT+"/solrwayback/services/viewFromLeakedResource?"+queryAndUrlInfo;                      
-        URI uri = UriBuilder.fromUri(redirect).build();
+        URI uri = new URI(redirect);
         logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "VIEW FROM LEAKED RESOURCE");
         return Response.seeOther(uri).build();
       }
@@ -119,11 +119,13 @@ public class SolrWaybackRootProxyResource {
       String waybackDate = waybackDataObject.substring(0, indexFirstSlash);
       // System.out.println(waybackDate);
       String waybackUrl = waybackDataObject.substring(indexFirstSlash + 1);
-      // System.out.println(waybackUrl);
+       System.out.println("waybackurl:"+waybackUrl);
 
       URL leakUrl = new URL(leakUrlStr);
       String leakAuth = leakUrl.getAuthority();
-
+      
+      
+      
       // System.out.println(leakAuth);
       int index = leakUrlStr.indexOf(leakAuth);
 
@@ -133,7 +135,9 @@ public class SolrWaybackRootProxyResource {
       // System.out.println(leakUrlPart);
 
       URL refererURL = new URL(waybackUrl);
+      log.info("refererURL created:"+waybackUrl);      
       String refererAuth = refererURL.getAuthority();
+      log.info("refererAiuth created:"+refererAuth);
       // System.out.println(refererAuth);
 
       // System.out.println(referleakUrlPart);
@@ -141,12 +145,12 @@ public class SolrWaybackRootProxyResource {
       if (relativeLeak) {
         String redirect = solrwaybackProxyUrl + waybackDate + "/http://" + refererAuth + leakUrlPart;
                 
-        URI uri = UriBuilder.fromUri(redirect).build();
+        URI uri = new URI(redirect);
         logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "RELEATIVE LEAK");
         return Response.seeOther(uri).build(); // Jersey way to forward response.
       } else {
         String redirect = solrwaybackProxyUrl + waybackDate + "/" + leakUrlStr;       
-        URI uri = UriBuilder.fromUri(redirect).build();
+        URI uri = new URI(redirect);
         logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "ABSOLUTE LEAK");
         return Response.seeOther(uri).build(); // Jersey way to forward response.
       }
