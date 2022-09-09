@@ -23,6 +23,12 @@ public class SolrWaybackRootProxyResource {
 
   private static final Logger log = LoggerFactory.getLogger(SolrWaybackRootProxyResource.class);
  
+  public static void main(String[] args) {
+      String url="http:/test/cat.png";
+      System.out.print(fixMissingProtocolSlash(url));
+      
+      
+  }
   
   //In jersey you need this method to catch a rootcontext call. The proxy method needs at least 
   //one character more besides the root call.
@@ -54,6 +60,7 @@ public class SolrWaybackRootProxyResource {
       // refererUrl="teg-desktop.sb.statsbiblioteket.dk:8080/solrwayback/services/web/20010704073938/http://opasia.dk/kultur/musik/anmeldelser/an_paradise_lost.shtml";
       // String leakUrlStr= "http://localhost:8080/images/leaked.png?test=123";
        String leakUrlStr = uriInfo.getRequestUri().toString();
+          
 
 
       // Determine if the leak is relative (/images/test.png etc.) or
@@ -66,6 +73,8 @@ public class SolrWaybackRootProxyResource {
       }      
 
       String refererUrl = httpRequest.getHeader("referer");
+
+
       if (refererUrl == null) {
         //This will open happen if user type a new URL in the browser.
         //Some OpenWayback users just type url in the browser field and it will open (some  harvested version) of
@@ -107,40 +116,60 @@ public class SolrWaybackRootProxyResource {
         logLeakRedirection( leakUrlStr, refererUrl, uri.toString(), "VIEW FROM LEAKED RESOURCE");
         return Response.seeOther(uri).build();
       }
-  
-      int dataStart = refererUrl.indexOf("/web/");
-      String solrwaybackBaseUrl = refererUrl.substring(0, dataStart + 5);
-      String solrwaybackProxyUrl = solrwaybackBaseUrl.replaceFirst("/web/","/webProxy/");
+      String solrwaybackProxyUrl = null;
+      String solrwaybackBaseUrl = null;
+      String waybackDataObject = null;
+      if (refererUrl.indexOf("/web/") >0){
+
+        int dataStart = refererUrl.indexOf("/web/");
+        solrwaybackBaseUrl = refererUrl.substring(0, dataStart + 5);
+        solrwaybackProxyUrl = solrwaybackBaseUrl.replaceFirst("/web/","/webProxy/");
+        waybackDataObject = refererUrl.substring(dataStart + 5);
+      }
+      else if (refererUrl.indexOf("/webProxy/") >0) {          
+              
+              int dataStart = refererUrl.indexOf("/webProxy/");
+              solrwaybackBaseUrl = refererUrl.substring(0, dataStart + 10);
+              solrwaybackProxyUrl = solrwaybackBaseUrl;
+              waybackDataObject = refererUrl.substring(dataStart + 10);
+      }
+      else {
+          log.error("Could not find waybackDataObject from refererurl:"+refererUrl);
+          return Response.noContent().build();
+      }
       
-      String waybackDataObject = refererUrl.substring(dataStart + 5);
-      // System.out.println(waybackDataObject);
+      
+      
+
+
       int indexFirstSlash = waybackDataObject.indexOf("/");
 
       String waybackDate = waybackDataObject.substring(0, indexFirstSlash);
-      // System.out.println(waybackDate);
+      
+      
       String waybackUrl = waybackDataObject.substring(indexFirstSlash + 1);
-       System.out.println("waybackurl:"+waybackUrl);
-
+       
+      //For some reason it can start with http:/test/ or https:/test/ ( the extra // is missing from protocol)
+            
+      waybackUrl=fixMissingProtocolSlash(waybackUrl);
+            
       URL leakUrl = new URL(leakUrlStr);
       String leakAuth = leakUrl.getAuthority();
       
       
       
-      // System.out.println(leakAuth);
       int index = leakUrlStr.indexOf(leakAuth);
 
       // From http://localhost:8080/images/leaked.png the urlPart will be
       // /images/leaked.png?test=123);
-      String leakUrlPart = leakUrlStr.substring(index + leakAuth.length()); //
-      // System.out.println(leakUrlPart);
+      String leakUrlPart = leakUrlStr.substring(index + leakAuth.length()); //      
 
+     // log.info("refererURL created:"+waybackUrl);
       URL refererURL = new URL(waybackUrl);
-      log.info("refererURL created:"+waybackUrl);      
+            
       String refererAuth = refererURL.getAuthority();
-      log.info("refererAiuth created:"+refererAuth);
-      // System.out.println(refererAuth);
+     //log.info("refererAiuth created:"+refererAuth);
 
-      // System.out.println(referleakUrlPart);
 
       if (relativeLeak) {
         String redirect = solrwaybackProxyUrl + waybackDate + "/http://" + refererAuth + leakUrlPart;
@@ -182,7 +211,19 @@ public class SolrWaybackRootProxyResource {
    * Syncronized so logs are not mixed. Performance overhead is neglible
    */
   
- 
+ public static String fixMissingProtocolSlash(String url) {
+     
+     if (url.startsWith("http:/") && !url.startsWith("http://")) {
+         url ="http://"+url.substring(6);
+         
+     }
+     else if (url.startsWith("https:/") && !url.startsWith("https://")) {
+         url ="https://"+url.substring(7);
+     }
+     
+     return url;
+     
+ }
   
   public static String removePortFromUrl(String url) throws Exception {
 
